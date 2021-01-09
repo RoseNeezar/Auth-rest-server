@@ -4,7 +4,6 @@ import { verify } from "jsonwebtoken";
 import { getConnection } from "typeorm";
 import { User } from "../entities/User";
 import { createAccessToken, createRefreshToken } from "../utils/createTokens";
-import { sendRefreshToken } from "../utils/sendRefreshToken";
 
 interface UserPayload {
   userId: string;
@@ -39,8 +38,6 @@ export const registerUser = async (
       password: hashedPassword,
     }).save();
     user = result;
-
-    sendRefreshToken(res, createRefreshToken(user));
   } catch (err) {
     console.log(err);
     return res.status(500).json({ error: "DB error" });
@@ -50,7 +47,8 @@ export const registerUser = async (
 
   return res.status(201).send({
     accessToken: createAccessToken(user),
-    result,
+    refreshToken: createRefreshToken(user),
+    user: result,
   });
 };
 
@@ -72,15 +70,12 @@ export const loginUser = async (
     throw new Error("bad password");
   }
 
-  // login successful
-
-  sendRefreshToken(res, createRefreshToken(user));
-
   const { ["password"]: _, ...result } = user;
 
   return res.status(201).send({
     accessToken: createAccessToken(user),
-    result,
+    refreshToken: createRefreshToken(user),
+    user: result,
   });
 };
 
@@ -88,14 +83,15 @@ export const refreshToken = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const token = req.cookies.jid;
-  if (!token) {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
     return res.send({ ok: false, accessToken: "" });
   }
 
   let payload: any = null;
   try {
-    payload = verify(token, process.env.REFRESH_TOKEN_SECRET!);
+    payload = verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!);
   } catch (err) {
     console.log(err);
     return res.send({ ok: false, accessToken: "" });
@@ -106,14 +102,15 @@ export const refreshToken = async (
   if (!user) {
     return res.send({ ok: false, accessToken: "" });
   }
-  console.log("payload: ", payload, "user: ", user);
   if (user.tokenVersion !== payload.tokenVersion) {
     return res.send({ ok: false, accessToken: "" });
   }
 
-  sendRefreshToken(res, createRefreshToken(user));
-
-  return res.send({ ok: true, accessToken: createAccessToken(user) });
+  return res.send({
+    ok: true,
+    accessToken: createAccessToken(user),
+    refreshToken: createRefreshToken(user),
+  });
 };
 
 export const currentUser = async (
@@ -139,18 +136,8 @@ export const currentUser = async (
   const { ["password"]: _, ...result } = user as User;
 
   return res.status(201).send({
-    accessToken: createAccessToken(user!),
     result,
   });
-};
-
-export const logout = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
-  sendRefreshToken(res, "");
-
-  return res.status(201).send(true);
 };
 
 export const revokeRefreshTokensForUser = async (

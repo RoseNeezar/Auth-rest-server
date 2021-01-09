@@ -5,7 +5,6 @@ import {
   refreshToken,
   registerUser,
   revokeRefreshTokensForUser,
-  logout,
 } from "../controller/auth.controller";
 import { isAuth } from "../middlewares/isAuth";
 import { validate } from "../validators";
@@ -16,7 +15,6 @@ const router = Router();
 
 router.post("/login", loginRule, validate, loginUser);
 router.post("/register", registerRule, validate, registerUser);
-router.post("/logout", isAuth, logout);
 router.post("/refresh_token", refreshToken);
 router.post("/revoke_access", isAuth, revokeRefreshTokensForUser);
 router.post("/me", isAuth, currentUser);
