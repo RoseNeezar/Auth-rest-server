@@ -28,7 +28,7 @@ export const registerUser = async (
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
-    return res.status(401).json({ error: "Email in used" });
+    return res.status(400).json({ error: "Email in used" });
   }
 
   let user;
@@ -61,13 +61,13 @@ export const loginUser = async (
   const user = await User.findOne({ where: { email } });
 
   if (!user) {
-    throw new Error("could not find user");
+    return res.status(400).json({ error: [{ message: "Invalid credential" }] });
   }
 
   const valid = await compare(password, user.password);
 
   if (!valid) {
-    throw new Error("bad password");
+    return res.status(400).json({ error: [{ message: "Invalid credential" }] });
   }
 
   const { ["password"]: _, ...result } = user;
@@ -86,7 +86,7 @@ export const refreshToken = async (
   const { refreshToken } = req.body;
 
   if (!refreshToken) {
-    return res.send({ ok: false, accessToken: "" });
+    return res.status(400).json({ error: [{ message: "Invalid credential" }] });
   }
 
   let payload: any = null;
@@ -94,16 +94,16 @@ export const refreshToken = async (
     payload = verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!);
   } catch (err) {
     console.log(err);
-    return res.send({ ok: false, accessToken: "" });
+    return res.status(400).json({ error: [{ message: "Invalid credential" }] });
   }
 
   const user = await User.findOne({ id: payload.userId });
 
   if (!user) {
-    return res.send({ ok: false, accessToken: "" });
+    return res.status(400).json({ error: [{ message: "Invalid credential" }] });
   }
   if (user.tokenVersion !== payload.tokenVersion) {
-    return res.send({ ok: false, accessToken: "" });
+    return res.status(400).json({ error: [{ message: "Invalid credential" }] });
   }
 
   return res.send({

@@ -1,11 +1,12 @@
 import { NextFunction, Request, Response } from "express";
 import { verify } from "jsonwebtoken";
+import { NotAuthorizedError } from "../errors/notAuth";
 
 export const isAuth = (req: Request, res: Response, next: NextFunction) => {
   const authorization = req.headers["authorization"];
 
   if (!authorization) {
-    return res.status(404).json({ error: "not Auth" });
+    throw new NotAuthorizedError();
   }
 
   try {
