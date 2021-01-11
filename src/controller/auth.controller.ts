@@ -3,8 +3,8 @@ import { NextFunction, Request, Response } from "express";
 import { verify } from "jsonwebtoken";
 import { getConnection } from "typeorm";
 import { User } from "../entities/User";
-import { createAccessToken, createRefreshToken } from "../utils/createTokens";
-import { sendRefreshToken } from "../utils/sendRefreshToken";
+import { createTokens } from "../utils/createTokens";
+import { sendCookieToken } from "../utils/sendCookieToken";
 
 interface UserPayload {
   userId: string;
@@ -40,7 +40,9 @@ export const registerUser = async (
     }).save();
     user = result;
 
-    sendRefreshToken(res, createRefreshToken(user));
+    // sendRefreshToken(res, createRefreshToken(user));
+    // sendAccessToken(res, createAccessToken(user));
+    sendCookieToken(res, createTokens(user));
   } catch (err) {
     console.log(err);
     return res.status(500).json({ error: "DB error" });
@@ -49,7 +51,6 @@ export const registerUser = async (
   const { ["password"]: _, ...result } = user;
 
   return res.status(201).send({
-    accessToken: createAccessToken(user),
     result,
   });
 };
@@ -63,23 +64,24 @@ export const loginUser = async (
   const user = await User.findOne({ where: { email } });
 
   if (!user) {
-    throw new Error("could not find user");
+    return res.status(500).json({ error: "DB error1" });
   }
 
   const valid = await compare(password, user.password);
 
   if (!valid) {
-    throw new Error("bad password");
+    return res.status(500).json({ error: "DB error2" });
   }
 
   // login successful
 
-  sendRefreshToken(res, createRefreshToken(user));
+  // sendRefreshToken(res, createRefreshToken(user));
+  // sendAccessToken(res, createAccessToken(user));
+  sendCookieToken(res, createTokens(user));
 
   const { ["password"]: _, ...result } = user;
 
   return res.status(201).send({
-    accessToken: createAccessToken(user),
     result,
   });
 };
@@ -88,7 +90,7 @@ export const refreshToken = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const token = req.cookies.jid;
+  const token = req.cookies.refreshToken;
   if (!token) {
     return res.send({ ok: false, accessToken: "" });
   }
@@ -111,9 +113,11 @@ export const refreshToken = async (
     return res.send({ ok: false, accessToken: "" });
   }
 
-  sendRefreshToken(res, createRefreshToken(user));
+  // sendRefreshToken(res, createRefreshToken(user));
+  // sendAccessToken(res, createAccessToken(user));
+  sendCookieToken(res, createTokens(user));
 
-  return res.send({ ok: true, accessToken: createAccessToken(user) });
+  return res.send({ ok: true });
 };
 
 export const currentUser = async (
@@ -139,7 +143,6 @@ export const currentUser = async (
   const { ["password"]: _, ...result } = user as User;
 
   return res.status(201).send({
-    accessToken: createAccessToken(user!),
     result,
   });
 };
@@ -148,7 +151,8 @@ export const logout = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  sendRefreshToken(res, "");
+  // sendRefreshToken(res, "");
+  sendCookieToken(res, { accessToken: "", refreshToken: "" });
 
   return res.status(201).send(true);
 };
@@ -159,7 +163,7 @@ export const revokeRefreshTokensForUser = async (
 ): Promise<Response> => {
   await getConnection()
     .getRepository(User)
-    .increment({ id: parseInt(req.currentUser!.userId) }, "tokenVersion", 1);
+    .increment({ id: req.currentUser!.userId }, "tokenVersion", 1);
 
   return res.status(201).send(true);
 };
