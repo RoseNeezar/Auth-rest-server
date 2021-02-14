@@ -16,7 +16,7 @@ export const registerUser = async (
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
-    return res.status(401).json({ error: "Email in used" });
+    return res.status(400).json({ error: "Email in used" });
   }
 
   let user;

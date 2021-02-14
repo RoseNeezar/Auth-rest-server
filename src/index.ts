@@ -3,7 +3,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import router from "./router/index";
+import { allRouter } from "./router/index";
 import { createConnection } from "typeorm";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
@@ -68,7 +68,7 @@ async function createServer() {
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(cookieParser());
 
-    app.use(router);
+    app.use(allRouter);
 
     app.listen({ port }, () => {
       console.log(`server running on http://localhost:${port}`);
