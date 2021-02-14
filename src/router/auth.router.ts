@@ -6,12 +6,12 @@ import {
   revokeRefreshTokensForUser,
   logout,
 } from "../controller/auth.controller";
-import { isAuth } from "../middlewares/isAuth";
 import { validate } from "../validators";
 import { loginRule } from "../validators/auth/login.validate";
 import { registerRule } from "../validators/auth/register.validate";
 import passport from "passport";
 import { sendCookieToken } from "../utils/sendCookieToken";
+import { isAuth } from "../middlewares/isAuth";
 
 const router = Router();
 
