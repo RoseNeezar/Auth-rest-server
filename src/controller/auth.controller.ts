@@ -6,19 +6,6 @@ import { User } from "../entities/User";
 import { createTokens } from "../utils/createTokens";
 import { sendCookieToken } from "../utils/sendCookieToken";
 
-interface UserPayload {
-  userId: string;
-  tokenVersion: number;
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      currentUser?: UserPayload;
-    }
-  }
-}
-
 export const registerUser = async (
   req: Request,
   res: Response
@@ -40,8 +27,6 @@ export const registerUser = async (
     }).save();
     user = result;
 
-    // sendRefreshToken(res, createRefreshToken(user));
-    // sendAccessToken(res, createAccessToken(user));
     sendCookieToken(res, createTokens(user));
   } catch (err) {
     console.log(err);
@@ -72,11 +57,6 @@ export const loginUser = async (
   if (!valid) {
     return res.status(500).json({ error: "DB error2" });
   }
-
-  // login successful
-
-  // sendRefreshToken(res, createRefreshToken(user));
-  // sendAccessToken(res, createAccessToken(user));
   sendCookieToken(res, createTokens(user));
 
   const { ["password"]: _, ...result } = user;
@@ -86,54 +66,13 @@ export const loginUser = async (
   });
 };
 
-export const refreshToken = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
-  const token = req.cookies.refreshToken;
-  if (!token) {
-    return res.send({ ok: false, accessToken: "" });
-  }
-
-  let payload: any = null;
-  try {
-    payload = verify(token, process.env.REFRESH_TOKEN_SECRET!);
-  } catch (err) {
-    console.log(err);
-    return res.send({ ok: false, accessToken: "" });
-  }
-
-  const user = await User.findOne({ id: payload.userId });
-
-  if (!user) {
-    return res.send({ ok: false, accessToken: "" });
-  }
-  console.log("payload: ", payload, "user: ", user);
-  if (user.tokenVersion !== payload.tokenVersion) {
-    return res.send({ ok: false, accessToken: "" });
-  }
-
-  // sendRefreshToken(res, createRefreshToken(user));
-  // sendAccessToken(res, createAccessToken(user));
-  sendCookieToken(res, createTokens(user));
-
-  return res.send({ ok: true });
-};
-
 export const currentUser = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const authorization = req.headers["authorization"];
-
-  if (!authorization) {
-    return res.status(401).json({ error: "Unauthorised" });
-  }
   let user;
   try {
-    const token = authorization.split(" ")[1];
-    const payload: any = verify(token, process.env.ACCESS_TOKEN_SECRET!);
-    const result = await User.findOne(payload.userId);
+    const result = await User.findOne(req.currentUser?.userId);
     user = result;
   } catch (err) {
     console.log(err);
